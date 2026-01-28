@@ -6,7 +6,13 @@
         <!-- Judul -->
         <h1 class="text-lg font-bold">Call Me GA</h1>
 
-        <!-- Logo -->
-        <img src="{{ asset('logo/logo_wag_white.png') }}" alt="Logo" class="h-10">
+        {{-- Logout --}}
+        <form action="{{ route('logout') }}" method="POST" class="ml-4">
+            @csrf
+            <button type="submit" class="flex items-center space-x-2 hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-white rounded">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Logout</span>
+            </button>    
+        </form>
     </div>
 </header>

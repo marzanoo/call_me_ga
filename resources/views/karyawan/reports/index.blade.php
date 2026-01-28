@@ -64,36 +64,104 @@
         </div>
     </form>
 </div>
+<!-- Image Preview Modal -->
+<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+    <div class="relative max-w-3xl w-full px-4">
+        <img
+            id="modalImage"
+            src=""
+            class="w-full max-h-[80vh] object-contain rounded-lg shadow-lg bg-white"
+        >
+    </div>
+</div>
+
 @endsection
 @push('scripts')
 <script>
-    function previewImages(event) {
-        const previewContainer = document.getElementById('imagePreview');
-        const files = event.target.files;
+    const fileInput = document.getElementById('foto');
+    const previewContainer = document.getElementById('imagePreview');
 
-        // Clear existing previews
+    let selectedFiles = [];
+
+    fileInput.addEventListener('change', function (e) {
+        selectedFiles = Array.from(e.target.files);
+        renderPreviews();
+    });
+
+    function renderPreviews() {
         previewContainer.innerHTML = '';
 
-        // Loop through selected files
-        Array.from(files).forEach((file, index) => {
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
+        selectedFiles.forEach((file, index) => {
+            if (!file.type.startsWith('image/')) return;
 
-                reader.onload = function(e) {
-                    const div = document.createElement('div');
-                    div.className = 'relative bg-gray-200 rounded-lg overflow-hidden aspect-square';
-                    div.innerHTML = `
-                        <img src="${e.target.result}" alt="Preview ${index + 1}" class="object-cover w-full h-full">
-                        <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-1">
-                            img.jpg
-                        </div>
-                    `;
-                    previewContainer.appendChild(div);
-                };
+            const reader = new FileReader();
 
-                reader.readAsDataURL(file);
-            }
+            reader.onload = function (e) {
+                const div = document.createElement('div');
+                div.className = 'relative bg-gray-200 rounded-lg overflow-hidden w-full max-w-[120px] h-[120px]';
+
+                div.innerHTML = `
+                    <img 
+                        src="${e.target.result}" 
+                        onclick="openModal('${e.target.result}')"
+                        class="object-cover w-full h-full cursor-pointer hover:opacity-90 transition"
+                    />
+                    <button
+                        type="button"
+                        onclick="removeImage(${index})"
+                        class="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs hover:bg-red-700"
+                    >
+                        ✕
+                    </button>
+
+                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-1 truncate px-1">
+                        ${file.name}
+                    </div>
+                `;
+
+                previewContainer.appendChild(div);
+            };
+
+            reader.readAsDataURL(file);
         });
+
+        updateInputFiles();
     }
+
+    function removeImage(index) {
+        selectedFiles.splice(index, 1);
+        renderPreviews();
+    }
+
+    function updateInputFiles() {
+        const dataTransfer = new DataTransfer();
+
+        selectedFiles.forEach(file => {
+            dataTransfer.items.add(file);
+        });
+
+        fileInput.files = dataTransfer.files;
+    }
+    function openModal(imageSrc) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+
+        modalImage.src = imageSrc;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('imageModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    document.getElementById('imageModal').addEventListener('click', function (e) {
+        if (e.target.id === 'imageModal') {
+            closeModal();
+        }
+    });
+
 </script>
 @endpush

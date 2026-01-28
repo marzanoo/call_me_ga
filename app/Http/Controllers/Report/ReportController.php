@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Report;
 
+use App\Http\Controllers\Controller;
 use App\Models\DetailFotoReport;
 use App\Models\DetailStatusReport;
 use App\Models\Report;
@@ -73,7 +74,7 @@ class ReportController extends Controller
             // Status for report
             $status = DetailStatusReport::create([
                 'report_id' => $report->id,
-                'status' => 'Pending',
+                'status' => 'Menunggu',
                 'keterangan' => 'Laporan telah diterima dan menunggu proses verifikasi.',
             ]);
 

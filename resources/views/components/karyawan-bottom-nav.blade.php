@@ -18,8 +18,9 @@
         </a>
 
         {{-- Riwayat --}}
-        <a href=""
-           class="flex flex-col items-center text-gray-600">
+        <a href="{{ route('history.index') }}"
+           class="flex flex-col items-center text-gray-600
+           @if (Route::is('history.index')) text-red-800 @endif">
             <i class="fa-solid fa-history text-xl mb-1"></i>
             <span class="text-xs font-medium">Riwayat</span>
         </a>

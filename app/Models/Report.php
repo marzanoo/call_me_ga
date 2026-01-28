@@ -27,6 +27,12 @@ class Report extends Model
         return $this->hasMany(DetailFotoReport::class, 'report_id', 'id');
     }
 
+    public function latestStatus()
+    {
+        return $this->hasOne(DetailStatusReport::class)->latestOfMany();
+    }
+
+
     public function detailStatusReports()
     {
         return $this->hasMany(DetailStatusReport::class, 'report_id', 'id');
