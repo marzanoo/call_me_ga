@@ -22,22 +22,50 @@
 <div class="container mx-auto p-4">
     <div class="bg-white p-4 rounded-lg shadow-md text-center mb-4">
         <h3 class="flex text-xl font-bold text-gray-800 mb-1">Status Laporan Terakhir</h3>
-        <p class="flex text-sm text-gray-500 mb-6">{{ $lastReportStatus->created_at->format('d F Y') }}</p>
-        <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
-            <div class="flex items-start gap-3">
-                <div class="w-6 h-6 bg-yellow-400 rounded-full flex-shrink-0 mt-0.5"></div>
-                <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2">
-                        <h4 class="font-semibold text-gray-900"> {{ $lastReportStatus->detailStatusReports->first()->status }}</h4>
-                        <span class="text-gray-400">|</span>
-                        <span class="text-sm text-gray-500">{{ $lastReportStatus->detailStatusReports->first()->created_at->format('d F Y - H:i') }}</span>
+
+        @if ($lastReportStatus)
+            <p class="flex text-sm text-gray-500 mb-6">
+                {{ $lastReportStatus->created_at->format('d F Y') }}
+            </p>
+
+            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                <div class="flex items-start gap-3">
+                    <div class="w-6 h-6 bg-yellow-400 rounded-full flex-shrink-0 mt-0.5"></div>
+                    <div class="flex-1">
+                        @php
+                            $lastStatus = $lastReportStatus->detailStatusReports->first();
+                        @endphp
+
+                        @if ($lastStatus)
+                            <div class="flex items-center gap-2 mb-2">
+                                <h4 class="font-semibold text-gray-900">
+                                    {{ $lastStatus->status }}
+                                </h4>
+                                <span class="text-gray-400">|</span>
+                                <span class="text-sm text-gray-500">
+                                    {{ $lastStatus->created_at->format('d F Y - H:i') }}
+                                </span>
+                            </div>
+
+                            <p class="text-sm text-gray-600 leading-relaxed text-left">
+                                {{ $lastStatus->keterangan ?? 'Tidak ada keterangan tambahan.' }}
+                            </p>
+                        @else
+                            <p class="text-sm text-gray-500">
+                                Status laporan belum tersedia.
+                            </p>
+                        @endif
                     </div>
-                    <p class="text-sm text-gray-600 leading-relaxed text-left">
-                        {{ $lastReportStatus->detailStatusReports->first()->keterangan ?? 'Tidak ada keterangan tambahan.' }}
-                    </p>
                 </div>
             </div>
-        </div>
+        @else
+            <p class="text-sm text-gray-500 mb-4 text-left">
+                Kamu belum memiliki laporan.
+            </p>
+            <div class="bg-gray-50 p-5 rounded-lg border border-gray-200 text-sm text-gray-500 text-left">
+                Silakan buat laporan terlebih dahulu untuk melihat statusnya.
+            </div>
+        @endif
     </div>
     <div class="bg-white p-4 rounded-lg shadow-md text-center mb-4">
         <h3 class="flex text-xl font-bold text-gray-800 mb-1">Total Laporan</h3>

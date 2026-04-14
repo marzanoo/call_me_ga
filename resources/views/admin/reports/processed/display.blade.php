@@ -87,27 +87,34 @@
                 @endforeach
             </div>
         </div>
-        <form method="POST" action="{{ route('admin.reports.processed.update-status', $report->id) }}">
-            @csrf
-
-            <div class="mt-6 flex gap-3">
-                <button type="submit"
-                        name="status"
-                        value="Selesai"
-                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
-                    Selesai
-                </button>
-
-                {{-- <button type="submit"
-                        name="status"
-                        value="Ditolak"
-                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md">
-                    Tolak
-                </button> --}}
-            </div>
-        </form>
+        <div class="mt-6 flex gap-3">
+            <button type="button"
+                    id="completeButton"
+                    onclick="openUploadFotoSelesaiModal()"
+                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
+                Selesai
+            </button>
+        </div>
     </div>
 </div>
+{{-- <form method="POST" action="{{ route('admin.reports.processed.update-status', $report->id) }}">
+    @csrf
+
+    <div class="mt-6 flex gap-3">
+        <button type="submit"
+                name="status"
+                value="Selesai"
+                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
+            Selesai
+        </button>
+
+        <button type="button"
+                name="batal"                
+                class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md">
+            Batal
+        </button>
+    </div>
+</form> --}}
 {{-- Image Modal --}}
 <div id="imageModal"
      class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4">
@@ -126,10 +133,111 @@
              class="w-full max-h-[75vh] object-contain rounded-lg">
     </div>
 </div>
-
+<div id="uploadFotoSelesaiModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4">
+    <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
+        {{-- <button onclick="closeUploadFotoSelesaiModal()"
+                class="absolute -top-3 -right-3 bg-red-600 text-white
+                       w-8 h-8 rounded-full text-xl flex items-center justify-center">
+            &times;
+        </button> --}}
+        <button onclick="closeUploadFotoSelesaiModal()" class="text-lg font-semibold flex items-center w-fit mb-4">        
+            <i class="fa-solid fa-arrow-left mr-2"></i>Kembali
+        </button>
+        <h3 class="text-lg font-semibold mb-4">Upload Foto Penyelesaian</h3>
+        <form method="POST" action="{{ route('admin.reports.processed.update-status', $report->id) }}" enctype="multipart/form-data">
+            @csrf
+            <div class="mb-4">
+                <input type="hidden" name="status" value="Selesai">
+                <label for="foto_selesai" class="block text-sm font-medium text-gray-700 mb-2">Mohon untuk melampirkan foto sebagai bukti penyelesaian laporan</label>
+                <button type="button" onclick="document.getElementById('foto').click()" class="bg-red-700 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:bg-red-800 transition mb-4">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Unggah Foto
+                </button>
+                
+                <input type="file" id="foto" name="buktiFoto[]" multiple accept="image/*" class="hidden" onchange="previewImages(event)">
+                <div id="imagePreview" class="grid grid-cols-3 gap-3">
+                    <!-- Preview images will be inserted here -->
+                </div>
+            </div>
+            <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">Selesai</button>
+        </form>
+    </div>
+</div>
 @endsection
 @push('scripts')
 <script>
+    const fileInput = document.getElementById('foto');
+    const previewContainer = document.getElementById('imagePreview');
+
+    let selectedFiles = [];
+
+    fileInput.addEventListener('change', function (e) {
+        selectedFiles = Array.from(e.target.files);
+        renderPreviews();
+    });
+
+    function renderPreviews() {
+        previewContainer.innerHTML = '';
+
+        selectedFiles.forEach((file, index) => {
+            if (!file.type.startsWith('image/')) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                const div = document.createElement('div');
+                div.className = 'relative bg-gray-200 rounded-lg overflow-hidden w-full max-w-[120px] h-[120px]';
+
+                div.innerHTML = `
+                    <img 
+                        src="${e.target.result}" 
+                        onclick="openModal('${e.target.result}')"
+                        class="object-cover w-full h-full cursor-pointer hover:opacity-90 transition"
+                    />
+                    <button
+                        type="button"
+                        onclick="removeImage(${index})"
+                        class="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs hover:bg-red-700"
+                    >
+                        ✕
+                    </button>
+
+                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-1 truncate px-1">
+                        ${file.name}
+                    </div>
+                `;
+
+                previewContainer.appendChild(div);
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        updateInputFiles();
+    }
+
+    function removeImage(index) {
+        selectedFiles.splice(index, 1);
+        renderPreviews();
+    }
+
+    function updateInputFiles() {
+        const dataTransfer = new DataTransfer();
+
+        selectedFiles.forEach(file => {
+            dataTransfer.items.add(file);
+        });
+
+        fileInput.files = dataTransfer.files;
+    }
+    function openUploadFotoSelesaiModal() {
+        document.getElementById('uploadFotoSelesaiModal').classList.remove('hidden');
+    }
+    function closeUploadFotoSelesaiModal() {
+        document.getElementById('uploadFotoSelesaiModal').classList.add('hidden');
+    }
     function openImageModal(src) {
         document.getElementById('modalImage').src = src;
         document.getElementById('imageModal').classList.remove('hidden');
@@ -142,6 +250,11 @@
     document.getElementById('imageModal').addEventListener('click', function (e) {
         if (e.target.id === 'imageModal') {
             closeImageModal();
+        }
+    });
+    document.getElementById('uploadFotoSelesaiModal').addEventListener('click', function (e) {
+        if (e.target.id === 'uploadFotoSelesaiModal') {
+            closeUploadFotoSelesaiModal();
         }
     });
 </script>

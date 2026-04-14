@@ -3,8 +3,14 @@
 namespace App\Http\Controllers\Report;
 
 use App\Http\Controllers\Controller;
+use App\Models\DetailFotoReportSelesai;
 use App\Models\Report;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class AdminReportController extends Controller
 {
@@ -248,20 +254,140 @@ class AdminReportController extends Controller
 
     public function processedUpdateStatus(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:Menunggu,Diproses,Selesai,Ditolak',
-        ]);
+        $request->validate(
+            [
+                'status' => 'required|in:Menunggu,Diproses,Selesai,Ditolak',
+                'buktiFoto' => 'required|array',
+                'buktiFoto.*' => 'image|mimes:jpeg,png,jpg,gif|max:5012', //maks 5 mb
+            ],
+            [
+                'buktiFoto.*.image' => 'Bukti foto harus berupa gambar.',
+                'buktiFoto.*.max' => 'Bukti foto tidak boleh lebih dari 10MB.',
+            ]
+        );
 
-        $report = Report::findOrFail($id);
+        DB::beginTransaction();
+        try {
+            $report = Report::findOrFail($id);
 
-        $report->detailStatusReports()->create([
-            'status' => $request->status,
-            'keterangan' => 'Laporan telah selesai ditangani. Terima kasih atas laporan Anda.',
-        ]);
+            $report->detailStatusReports()->create([
+                'status' => $request->status,
+                'keterangan' => 'Laporan telah selesai ditangani. Terima kasih atas laporan Anda.',
+            ]);
 
-        return redirect()->route('admin.reports.processed.index')->with('success', 'Status laporan berhasil diperbarui.');
+            // Simpan foto bukti jika statusnya Selesai
+            if ($request->status === 'Selesai' && $request->hasFile('buktiFoto')) {
+                foreach ($request->file('buktiFoto') as $foto) {
+                    // Simpan foto bukti ke storage
+                    $imagePath = $this->compressAndStoreImage($foto, $report->id);
+
+                    Log::info('Saving completed report photo:', ['path' => $imagePath]);
+
+                    DetailFotoReportSelesai::create([
+                        'report_id' => $report->id,
+                        'image_path' => $imagePath,
+                    ]);
+                }
+            }
+
+            DB::commit();
+            Log::info('Report status updated successfully:', ['report_id' => $report->id, 'new_status' => $request->status]);
+            return redirect()->route('admin.reports.processed.index')->with('success', 'Status laporan berhasil diperbarui.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating report status:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan saat memperbarui status laporan.');
+        }
     }
 
+    private function compressAndStoreImage($imageFile, $reportId)
+    {
+        try {
+            // Generate a unique filename
+            $fileName = time() . '_' . uniqid() . '.jpg';
+            $directory = 'reports/' . $reportId;
+            $fullPath = storage_path('app/public/' . $directory);
+
+            Log::info('Compressing image:', [
+                'filename' => $fileName,
+                'directory' => $directory,
+                'fullPath' => $fullPath
+            ]);
+
+            // Create directory if not exists
+            if (!file_exists($fullPath)) {
+                mkdir($fullPath, 0755, true);
+                Log::info('Directory created:', ['path' => $fullPath]);
+            }
+
+            // Create ImageManager
+            $manager = new ImageManager(new Driver());
+
+            // Read image
+            $image = $manager->read($imageFile);
+            Log::info('Image loaded successfully');
+
+            // Resize the image to a width of 1920 and constrain aspect ratio (auto height)
+            $image->scale(width: 1920);
+            Log::info('Image resized');
+
+            // Compress with standard quality until file size is under 2MB
+            $quality = 90;
+            $targetSize = 2 * 1024 * 1024; // 2MB
+            $filePath = $directory . '/' . $fileName;
+            $fullFilePath = $fullPath . '/' . $fileName;
+
+            $attempts = 0;
+            do {
+                $attempts++;
+
+                // Encoding the image to the desired quality
+                $encoded = $image->toJpeg($quality);
+                file_put_contents($fullFilePath, $encoded);
+
+                // Check the file size
+                $fileSize = filesize($fullFilePath);
+
+                Log::info("Compression attempt {$attempts}:", [
+                    'quality' => $quality,
+                    'fileSize' => $fileSize,
+                    'targetSize' => $targetSize
+                ]);
+
+                // If file size is still larger than target, reduce quality
+                if ($fileSize > $targetSize) {
+                    $quality -= 5; // Decrease quality by 5%
+                }
+
+                // Break if quality is too low or max attempts
+                if ($quality < 20 || $attempts > 15) {
+                    Log::warning('Compression stopped:', [
+                        'quality' => $quality,
+                        'attempts' => $attempts,
+                        'finalSize' => $fileSize
+                    ]);
+                    break;
+                }
+            } while ($fileSize > $targetSize);
+
+            Log::info('Image compression complete:', [
+                'path' => $filePath,
+                'finalQuality' => $quality,
+                'finalSize' => filesize($fullFilePath)
+            ]);
+
+            return $filePath;
+        } catch (Exception $e) {
+            Log::error('Error in compressAndStoreImage:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
+    }
 
 
     //Waiting Reports
