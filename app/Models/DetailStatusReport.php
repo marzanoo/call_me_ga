@@ -13,6 +13,7 @@ class DetailStatusReport extends Model
         'report_id',
         'status',
         'keterangan',
+        'feedback',
     ];
 
     public function report()

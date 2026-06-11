@@ -200,7 +200,7 @@ class AdminReportController extends Controller
         $report = Report::with([
             'detailFotoReports:image_path,report_id',
             'detailStatusReports' => function ($q) {
-                $q->select('id', 'report_id', 'status', 'keterangan')
+                $q->select('id', 'report_id', 'status', 'keterangan', 'feedback')
                     ->orderBy('created_at', 'desc')
                     ->limit(1);
             },
@@ -436,6 +436,7 @@ class AdminReportController extends Controller
     {
         $request->validate([
             'status' => 'required|in:Menunggu,Diproses,Selesai,Ditolak',
+            'feedback' => 'required_if:status,Ditolak|string|max:255'
         ]);
 
         $report = Report::findOrFail($id);
@@ -451,6 +452,7 @@ class AdminReportController extends Controller
         $report->detailStatusReports()->create([
             'status'     => $request->status,
             'keterangan' => $request->keterangan ?? $keteranganMap[$request->status],
+            'feedback'   => $request->feedback
         ]);
 
         return redirect()

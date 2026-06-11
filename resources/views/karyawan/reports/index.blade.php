@@ -125,7 +125,7 @@
             reader.readAsDataURL(file);
         });
 
-        updateInputFiles();
+        // updateInputFiles();
     }
 
     function removeImage(index) {

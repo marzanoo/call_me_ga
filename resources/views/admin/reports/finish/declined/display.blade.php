@@ -82,6 +82,9 @@
                                 <span class="text-xs text-gray-500">{{ $status->created_at->format('d F Y - H:i') }}</span>
                             </div>
                             <p class="text-sm text-gray-600">{{ $status->keterangan ?? 'Sedang dalam proses' }}</p>
+                            @if($status->feedback)
+                                <p class="text-sm text-red-600 mt-1">Feedback: {{ $status->feedback }}</p>
+                            @endif
                         </div>
                     </div>
                 @endforeach

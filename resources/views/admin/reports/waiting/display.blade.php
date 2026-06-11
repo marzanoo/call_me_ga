@@ -90,6 +90,13 @@
         <form method="POST" action="{{ route('admin.reports.waiting.update-status', $report->id) }}">
             @csrf
 
+            <div class="mt-4 hidden" id="feedbackContainer">
+                <label for="feedback" class="block text-sm font-medium text-gray-700 mb-1">
+                    Alasan Penolakan
+                </label>
+                <textarea name="feedback" id="feedback" cols="30" rows="10" class="w-full border rounded-md p-2 text-sm" placeholder="Masukkan alasan penolakan..."></textarea>
+            </div>
+
             <div class="mt-6 flex gap-3">
                 <button type="submit"
                         name="status"
@@ -98,11 +105,18 @@
                     Verifikasi
                 </button>
 
-                <button type="submit"
-                        name="status"
-                        value="Ditolak"
+                <button type="button"                        
+                        onclick="showFeedback()"
                         class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md">
                     Tolak
+                </button>
+
+                <button type="submit"
+                        name="status"
+                        id="submitTolak"
+                        value="Ditolak"
+                        class="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-md hidden">
+                    Kirim Penolakan
                 </button>
             </div>
         </form>
@@ -145,5 +159,10 @@
             closeImageModal();
         }
     });
+
+    function showFeedback() {
+        document.getElementById('feedbackContainer').classList.remove('hidden');
+        document.getElementById('submitTolak').classList.remove('hidden');
+    }
 </script>
 @endpush
