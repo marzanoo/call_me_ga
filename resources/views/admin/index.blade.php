@@ -16,6 +16,12 @@
     </div>
 </div>
 <div class="container mx-auto p-4">
+    {{-- dashboard public button --}}
+    <div class="mb-4">
+        <a href="{{ route('dashboard-public') }}" class="block w-full bg-[#B3282D] text-white py-2 px-4 rounded-lg shadow-md text-center">
+            Buka Dashboard Publik
+        </a>
+    </div>
     <div class="bg-white p-4 rounded-lg shadow-md text-center mb-4">
         <h3 class="flex text-xl font-bold text-gray-800 mb-1">Laporan Masuk</h3>
         <p class="flex text-sm text-gray-500 mb-6">{{ now()->format('Y') }}</p>
@@ -59,8 +65,8 @@
     <div class="bg-white p-4 rounded-lg shadow-md text-center mb-4">
         <h3 class="flex text-xl font-bold text-gray-800 mb-1">Master Data</h3>
         <p class="flex text-sm text-gray-500 mb-6">Kelola data referensi sistem</p>
-        <a href="{{ route('admin.master.locations.index') }}" class="block w-full bg-[#B3282D] text-white py-2 px-4 rounded-lg shadow-md">
-            Master Lokasi
+        <a href="{{ route('admin.master.index') }}" class="block w-full bg-[#B3282D] text-white py-2 px-4 rounded-lg shadow-md">
+            Buka Master Data
         </a>
     </div>
 </div>

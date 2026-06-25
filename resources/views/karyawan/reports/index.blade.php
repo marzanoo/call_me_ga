@@ -58,8 +58,13 @@
         {{-- Kategori Field --}}
         <div class="mb-6">
             <label for="kategori" class="block text-gray-700 font-medium mb-2">Kategori</label>
-            <input type="text" name="kategori" placeholder="Masukkan kategori" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent" required>
-            <p class="text-gray-400 text-xs mt-1">Lampu, meja, kursi, etc</p>   
+            <select id="kategori" name="kategori" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent" required>
+                <option value="">Pilih kategori</option>
+                @foreach($categories as $category)
+                    <option value="{{ $category }}" @selected(old('kategori') === $category)>{{ $category }}</option>
+                @endforeach
+            </select>
+            <p class="text-gray-400 text-xs mt-1">Pilihan kategori dikelola oleh admin.</p>
         </div>
 
         {{-- Permasalahan --}}

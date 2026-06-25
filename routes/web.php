@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Admin\MasterCategoryController;
+use App\Http\Controllers\Admin\MasterController;
 use App\Http\Controllers\Admin\MasterLocationController;
+use App\Http\Controllers\Admin\MasterUserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Report\AdminReportController;
@@ -43,9 +46,16 @@ Route::middleware('superapp.auth')->group(function () {
     });
     Route::prefix('admin')->group(function () {
         Route::prefix('master')->group(function () {
+            Route::get('/', [MasterController::class, 'index'])->name('admin.master.index');
             Route::resource('locations', MasterLocationController::class)
                 ->only(['index', 'store', 'update', 'destroy'])
                 ->names('admin.master.locations');
+            Route::resource('categories', MasterCategoryController::class)
+                ->only(['index', 'store', 'update', 'destroy'])
+                ->names('admin.master.categories');
+            Route::resource('users', MasterUserController::class)
+                ->only(['index', 'store', 'update', 'destroy'])
+                ->names('admin.master.users');
         });
 
         Route::prefix('reports')->controller(AdminReportController::class)->group(function () {
