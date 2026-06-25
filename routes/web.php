@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Admin\MasterCategoryController;
 use App\Http\Controllers\Admin\MasterController;
 use App\Http\Controllers\Admin\MasterLocationController;
 use App\Http\Controllers\Admin\MasterUserController;
@@ -50,9 +49,6 @@ Route::middleware('superapp.auth')->group(function () {
             Route::resource('locations', MasterLocationController::class)
                 ->only(['index', 'store', 'update', 'destroy'])
                 ->names('admin.master.locations');
-            Route::resource('categories', MasterCategoryController::class)
-                ->only(['index', 'store', 'update', 'destroy'])
-                ->names('admin.master.categories');
             Route::resource('users', MasterUserController::class)
                 ->only(['index', 'store', 'update', 'destroy'])
                 ->names('admin.master.users');

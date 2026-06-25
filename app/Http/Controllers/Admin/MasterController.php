@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\MasterCategory;
 use App\Models\MasterLocation;
 use App\Models\User;
 
@@ -14,10 +13,9 @@ class MasterController extends Controller
         $this->authorizeAdmin();
 
         $locationCount = MasterLocation::count();
-        $categoryCount = MasterCategory::count();
         $userCount = User::count();
 
-        return view('admin.master.index', compact('locationCount', 'categoryCount', 'userCount'));
+        return view('admin.master.index', compact('locationCount', 'userCount'));
     }
 
     private function authorizeAdmin(): void

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Report;
 use App\Http\Controllers\Controller;
 use App\Models\DetailFotoReport;
 use App\Models\DetailStatusReport;
-use App\Models\MasterCategory;
 use App\Models\MasterLocation;
 use App\Models\Report;
 use Exception;
@@ -30,11 +29,8 @@ class ReportController extends Controller
             ->get()
             ->groupBy('area')
             ->map(fn ($items) => $items->pluck('detail')->values());
-        $categories = MasterCategory::active()
-            ->orderBy('name')
-            ->pluck('name');
 
-        return view('karyawan.reports.index', compact('locations', 'categories'));
+        return view('karyawan.reports.index', compact('locations'));
     }
 
     /**
@@ -66,20 +62,7 @@ class ReportController extends Controller
                     },
                 ],
                 'lokasi_catatan' => 'required|string|max:255',
-                'kategori' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    function ($attribute, $value, $fail) {
-                        $isValidCategory = MasterCategory::active()
-                            ->where('name', $value)
-                            ->exists();
-
-                        if (!$isValidCategory) {
-                            $fail('Kategori tidak tersedia di master kategori.');
-                        }
-                    },
-                ],
+                'kategori' => 'required|string|max:255',
                 'permasalahan' => 'required|string',
                 'foto' => 'nullable|array',
                 'foto.*' => 'image|mimes:jpeg,png,jpg,gif|max:10240', // Max 10MB sebelum compress
