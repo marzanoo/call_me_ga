@@ -18,7 +18,7 @@
 <div class="container mx-auto p-4">
     {{-- dashboard public button --}}
     <div class="mb-4">
-        <a href="{{ route('dashboard-public') }}" class="block w-full bg-[#B3282D] text-white py-2 px-4 rounded-lg shadow-md text-center">
+        <a href="{{ route('dashboard.public') }}" class="block w-full bg-[#B3282D] text-white py-2 px-4 rounded-lg shadow-md text-center">
             Buka Dashboard Publik
         </a>
     </div>
