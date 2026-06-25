@@ -28,6 +28,8 @@ Route::prefix('auth')->group(function () {
     });
 });
 
+Route::get('/public-dashboard', [DashboardController::class, 'publicDashboard'])->name('dashboard.public');
+
 Route::middleware('superapp.auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::prefix('reports')->controller(ReportController::class)->group(function () {
@@ -52,6 +54,18 @@ Route::middleware('superapp.auth')->group(function () {
             Route::get('/finish/declined', 'finishDeclinedIndex')->name('admin.reports.finish.declined.index');
             Route::get('/finish/done/{id}', 'finishDoneShow')->name('admin.reports.finish.done.show');
             Route::get('/finish/declined/{id}', 'finishDeclinedShow')->name('admin.reports.finish.declined.show');
+        });
+    });
+    Route::prefix('teknisi')->group(function () {
+        Route::prefix('reports')->controller(AdminReportController::class)->group(function () {
+            Route::get('/processed', 'processedIndex')->name('teknisi.reports.processed.index');
+            Route::get('/processed/{id}', 'processedShow')->name('teknisi.reports.processed.show');
+            Route::post('/processed/{id}/update-status', 'processedUpdateStatus')->name('teknisi.reports.processed.update-status');
+            Route::get('/finish', 'finishIndex')->name('teknisi.reports.finish.index');
+            Route::get('/finish/done', 'finishDoneIndex')->name('teknisi.reports.finish.done.index');
+            Route::get('/finish/done/{id}', 'finishDoneShow')->name('teknisi.reports.finish.done.show');
+            Route::get('/finish/declined', 'finishDeclinedIndex')->name('teknisi.reports.finish.declined.index');
+            Route::get('/finish/declined/{id}', 'finishDeclinedShow')->name('teknisi.reports.finish.declined.show');
         });
     });
 });

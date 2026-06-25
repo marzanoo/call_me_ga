@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Image;
 use Intervention\Image\ImageManager;
@@ -22,7 +23,9 @@ class ReportController extends Controller
      */
     public function index()
     {
-        return view('karyawan.reports.index');
+        $locations = config('callmega.locations');
+
+        return view('karyawan.reports.index', compact('locations'));
     }
 
     /**
@@ -34,10 +37,23 @@ class ReportController extends Controller
         Log::info('Request Data:', $request->all());
         Log::info('Files:', $request->allFiles());
 
+        $locations = config('callmega.locations');
+
         $request->validate(
             [
                 'user_id' => 'required|exists:users,id',
-                'lokasi' => 'required|string|max:255',
+                'lokasi_area' => ['required', 'string', 'max:255', Rule::in(array_keys($locations))],
+                'lokasi_detail' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    function ($attribute, $value, $fail) use ($request, $locations) {
+                        if (!in_array($value, $locations[$request->lokasi_area] ?? [], true)) {
+                            $fail('Gedung atau lantai tidak sesuai dengan lokasi daerah.');
+                        }
+                    },
+                ],
+                'lokasi_catatan' => 'required|string|max:255',
                 'kategori' => 'required|string|max:255',
                 'permasalahan' => 'required|string',
                 'foto' => 'nullable|array',
@@ -46,8 +62,9 @@ class ReportController extends Controller
             [
                 'user_id.required' => 'User ID harus diisi.',
                 'user_id.exists' => 'User tidak ditemukan.',
-                'lokasi.required' => 'Lokasi harus diisi.',
-                'lokasi.max' => 'Lokasi tidak boleh lebih dari 255 karakter.',
+                'lokasi_area.required' => 'Lokasi daerah harus dipilih.',
+                'lokasi_detail.required' => 'Gedung atau lantai harus dipilih.',
+                'lokasi_catatan.required' => 'Keterangan lokasi harus diisi.',
                 'kategori.required' => 'Kategori harus diisi.',
                 'kategori.max' => 'Kategori tidak boleh lebih dari 255 karakter.',
                 'permasalahan.required' => 'Permasalahan harus diisi.',
@@ -60,11 +77,20 @@ class ReportController extends Controller
 
         DB::beginTransaction();
         try {
+            $lokasi = collect([
+                $request->lokasi_area,
+                $request->lokasi_detail,
+                $request->lokasi_catatan,
+            ])->filter()->implode(' - ');
+
             // Create report
             $report = Report::create([
                 'user_id' => $request->user_id,
                 'tanggal' => now()->toDateString(),
-                'lokasi' => $request->lokasi,
+                'lokasi' => $lokasi,
+                'lokasi_area' => $request->lokasi_area,
+                'lokasi_detail' => $request->lokasi_detail,
+                'lokasi_catatan' => $request->lokasi_catatan,
                 'kategori' => $request->kategori,
                 'permasalahan' => $request->permasalahan,
             ]);
@@ -74,6 +100,7 @@ class ReportController extends Controller
             // Status for report
             $status = DetailStatusReport::create([
                 'report_id' => $report->id,
+                'created_by' => $request->user_id,
                 'status' => 'Menunggu',
                 'keterangan' => 'Laporan telah diterima dan menunggu proses verifikasi.',
             ]);

@@ -33,9 +33,26 @@
         
         {{-- Lokasi Field --}}
         <div class="mb-6">
-            <label for="lokasi" class="block text-gray-700 font-medium mb-2">Lokasi</label>
-            <input type="text" name="lokasi" placeholder="Masukkan lokasi" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent" required>
-            <p class="text-gray-400 text-xs mt-1">Gedung, lantai, area/ruangan, etc</p>
+            <label for="lokasi_area" class="block text-gray-700 font-medium mb-2">Lokasi Daerah</label>
+            <select id="lokasi_area" name="lokasi_area" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent" required>
+                <option value="">Pilih lokasi daerah</option>
+                @foreach($locations as $area => $details)
+                    <option value="{{ $area }}" @selected(old('lokasi_area') === $area)>{{ $area }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="mb-6">
+            <label for="lokasi_detail" class="block text-gray-700 font-medium mb-2">Gedung atau Lantai</label>
+            <select id="lokasi_detail" name="lokasi_detail" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent" required disabled>
+                <option value="">Pilih gedung atau lantai</option>
+            </select>
+        </div>
+
+        <div class="mb-6">
+            <label for="lokasi_catatan" class="block text-gray-700 font-medium mb-2">Keterangan Lokasi</label>
+            <input type="text" id="lokasi_catatan" name="lokasi_catatan" value="{{ old('lokasi_catatan') }}" placeholder="Contoh: ruang meeting, area pantry, sisi kanan lift" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-transparent" required>
+            <p class="text-gray-400 text-xs mt-1">Isi detail area setelah memilih lokasi.</p>
         </div>
 
         {{-- Kategori Field --}}
@@ -80,8 +97,38 @@
 <script>
     const fileInput = document.getElementById('foto');
     const previewContainer = document.getElementById('imagePreview');
+    const locations = @json($locations);
+    const oldLocationArea = @json(old('lokasi_area'));
+    const oldLocationDetail = @json(old('lokasi_detail'));
+    const locationAreaInput = document.getElementById('lokasi_area');
+    const locationDetailInput = document.getElementById('lokasi_detail');
 
     let selectedFiles = [];
+
+    function populateLocationDetail(selectedArea, selectedDetail = '') {
+        locationDetailInput.innerHTML = '<option value="">Pilih gedung atau lantai</option>';
+        locationDetailInput.disabled = !selectedArea;
+
+        if (!selectedArea || !locations[selectedArea]) {
+            return;
+        }
+
+        locations[selectedArea].forEach(function (detail) {
+            const option = document.createElement('option');
+            option.value = detail;
+            option.textContent = detail;
+            option.selected = detail === selectedDetail;
+            locationDetailInput.appendChild(option);
+        });
+    }
+
+    locationAreaInput.addEventListener('change', function (event) {
+        populateLocationDetail(event.target.value);
+    });
+
+    if (oldLocationArea) {
+        populateLocationDetail(oldLocationArea, oldLocationDetail);
+    }
 
     fileInput.addEventListener('change', function (e) {
         selectedFiles = Array.from(e.target.files);
@@ -111,7 +158,7 @@
                         onclick="removeImage(${index})"
                         class="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs hover:bg-red-700"
                     >
-                        ✕
+                        X
                     </button>
 
                     <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-1 truncate px-1">

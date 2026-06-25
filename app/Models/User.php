@@ -67,4 +67,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(Report::class, 'user_id', 'id');
     }
+
+    public function assignedReports()
+    {
+        return $this->hasMany(Report::class, 'assigned_to', 'id');
+    }
 }

@@ -34,7 +34,10 @@
             </div>
         @endif
         {{-- Report Title and Description --}}
-        <h6 class="font-semibold text-gray-800 mb-2">{{ $report->kategori ?? 'Gedung WMS Lantai 5, CMD' }}</h6>
+        <h6 class="font-semibold text-gray-800 mb-2">{{ $report->lokasi ?? 'Gedung WMS Lantai 5, CMD' }}</h6>
+        @if($report->assignee)
+            <p class="text-gray-500 text-sm mb-2">Ditangani oleh: {{ ucwords(strtolower($report->assignee->name)) }}</p>
+        @endif
         <p class="text-gray-600 text-sm mb-4">
             {{ $report->permasalahan ?? 'Lampu mengalami kerusakan mati total nih jadi gelap kaga bisa gawe jadinya' }}
         </p>
@@ -82,10 +85,25 @@
                                 <span class="text-xs text-gray-500">{{ $status->created_at->format('d F Y - H:i') }}</span>
                             </div>
                             <p class="text-sm text-gray-600">{{ $status->keterangan ?? 'Sedang dalam proses' }}</p>
+                            @if($status->creator)
+                                <p class="text-xs text-gray-400 mt-1">Diupdate oleh {{ ucwords(strtolower($status->creator->name)) }}</p>
+                            @endif
                         </div>
                     </div>
                 @endforeach
             </div>
+        </div>
+        <div class="mt-6 border rounded-lg p-4">
+            <h6 class="font-semibold text-gray-800 mb-3">Update Status Diproses</h6>
+            <form method="POST" action="{{ route('admin.reports.processed.update-status', $report->id) }}">
+                @csrf
+                <input type="hidden" name="status" value="Diproses">
+                <label for="keterangan_diproses" class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                <textarea name="keterangan" id="keterangan_diproses" rows="4" class="w-full border rounded-md p-2 text-sm" placeholder="Tulis progres penanganan terbaru..." required>{{ old('keterangan') }}</textarea>
+                <button type="submit" class="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                    Simpan Masih Diproses
+                </button>
+            </form>
         </div>
         <div class="mt-6 flex gap-3">
             <button type="button"
@@ -148,6 +166,8 @@
             @csrf
             <div class="mb-4">
                 <input type="hidden" name="status" value="Selesai">
+                <label for="keterangan_selesai" class="block text-sm font-medium text-gray-700 mb-2">Keterangan Penyelesaian</label>
+                <textarea name="keterangan" id="keterangan_selesai" rows="4" class="w-full border rounded-md p-2 text-sm mb-4" placeholder="Jelaskan hasil penyelesaian laporan..." required>{{ old('keterangan') }}</textarea>
                 <label for="foto_selesai" class="block text-sm font-medium text-gray-700 mb-2">Mohon untuk melampirkan foto sebagai bukti penyelesaian laporan</label>
                 <button type="button" onclick="document.getElementById('foto').click()" class="bg-red-700 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:bg-red-800 transition mb-4">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -193,7 +213,7 @@
                 div.innerHTML = `
                     <img 
                         src="${e.target.result}" 
-                        onclick="openModal('${e.target.result}')"
+                        onclick="openImageModal('${e.target.result}')"
                         class="object-cover w-full h-full cursor-pointer hover:opacity-90 transition"
                     />
                     <button
@@ -201,7 +221,7 @@
                         onclick="removeImage(${index})"
                         class="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs hover:bg-red-700"
                     >
-                        ✕
+                        X
                     </button>
 
                     <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs text-center py-1 truncate px-1">

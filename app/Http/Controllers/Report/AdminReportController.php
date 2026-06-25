@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Report;
 use App\Http\Controllers\Controller;
 use App\Models\DetailFotoReportSelesai;
 use App\Models\Report;
+use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,10 @@ class AdminReportController extends Controller
      */
     public function index(Request $request)
     {
-        $status = $request->get('status', 'menunggu'); // default
+        $this->ensureTechnicianRouteAccess();
+
+        $isTechnician = auth()->user()?->role === config('callmega.roles.technician');
+        $status = $request->get('status', $isTechnician ? 'diproses' : 'menunggu'); // default
 
         $statusMap = [
             'menunggu' => 'Menunggu',
@@ -36,6 +40,9 @@ class AdminReportController extends Controller
             },
             'user:id,name'
         ])
+            ->when($isTechnician, function ($q) {
+                $q->where('assigned_to', auth()->id());
+            })
             ->whereHas('detailStatusReports', function ($q) use ($currentStatus) {
                 $q->where('status', $currentStatus)
                     ->whereRaw('detail_status_reports.id = (
@@ -49,33 +56,21 @@ class AdminReportController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $laporanMenungguCount = Report::whereIn('id', function ($q) {
-            $q->select('report_id')
-                ->from('detail_status_reports')
-                ->where('status', 'Menunggu')
-                ->whereIn('id', function ($sub) {
-                    $sub->selectRaw('MAX(id)')
-                        ->from('detail_status_reports')
-                        ->groupBy('report_id');
-                });
-        })->count();
+        $laporanMenungguCount = $this->latestStatusCount('Menunggu', $isTechnician ? auth()->id() : null);
+        $laporanDiprosesCount = $this->latestStatusCount('Diproses', $isTechnician ? auth()->id() : null);
 
-        $laporanDiprosesCount = Report::whereIn('id', function ($q) {
-            $q->select('report_id')
-                ->from('detail_status_reports')
-                ->where('status', 'Diproses')
-                ->whereIn('id', function ($sub) {
-                    $sub->selectRaw('MAX(id)')
-                        ->from('detail_status_reports')
-                        ->groupBy('report_id');
-                });
-        })->count();
+        if ($isTechnician) {
+            return view('teknisi.reports.processed.index', compact('reports'));
+        }
 
         return view('admin.reports.index', compact('reports', 'status', 'laporanMenungguCount', 'laporanDiprosesCount'));
     }
 
     public function finishIndex(Request $request)
     {
+        $this->ensureTechnicianRouteAccess();
+
+        $isTechnician = auth()->user()?->role === config('callmega.roles.technician');
         $status = $request->get('status', 'selesai'); // default
 
         $statusMap = [
@@ -93,6 +88,9 @@ class AdminReportController extends Controller
             },
             'user:id,name'
         ])
+            ->when($isTechnician, function ($q) {
+                $q->where('assigned_to', auth()->id());
+            })
             ->whereHas('detailStatusReports', function ($q) use ($currentStatus) {
                 $q->where('status', $currentStatus)
                     ->whereRaw('detail_status_reports.id = (
@@ -106,31 +104,20 @@ class AdminReportController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $laporanSelesaiCount = Report::whereIn('id', function ($q) {
-            $q->select('report_id')
-                ->from('detail_status_reports')
-                ->where('status', 'Selesai')
-                ->whereIn('id', function ($sub) {
-                    $sub->selectRaw('MAX(id)')
-                        ->from('detail_status_reports')
-                        ->groupBy('report_id');
-                });
-        })->count();
-        $laporanDitolakCount = Report::whereIn('id', function ($q) {
-            $q->select('report_id')
-                ->from('detail_status_reports')
-                ->where('status', 'Ditolak')
-                ->whereIn('id', function ($sub) {
-                    $sub->selectRaw('MAX(id)')
-                        ->from('detail_status_reports')
-                        ->groupBy('report_id');
-                });
-        })->count();
+        $laporanSelesaiCount = $this->latestStatusCount('Selesai', $isTechnician ? auth()->id() : null);
+        $laporanDitolakCount = $this->latestStatusCount('Ditolak', $isTechnician ? auth()->id() : null);
+        if ($isTechnician) {
+            return view('teknisi.reports.finish.index', compact('reports', 'status', 'laporanSelesaiCount', 'laporanDitolakCount'));
+        }
+
         return view('admin.reports.finish.index', compact('reports', 'status', 'laporanSelesaiCount', 'laporanDitolakCount'));
     }
 
     public function finishDoneIndex()
     {
+        $this->ensureTechnicianRouteAccess();
+
+        $isTechnician = auth()->user()?->role === config('callmega.roles.technician');
         $reports = Report::with([
             'detailFotoReports:image_path,report_id',
             'detailStatusReports' => function ($q) {
@@ -148,30 +135,51 @@ class AdminReportController extends Controller
               LIMIT 1
           )');
             })
+            ->when($isTechnician, function ($q) {
+                $q->where('assigned_to', auth()->id());
+            })
             ->orderBy('created_at', 'desc')
             ->get();
+
+        if ($isTechnician) {
+            return view('teknisi.reports.finish.done.index', compact('reports'));
+        }
 
         return view('admin.reports.finish.done.index', compact('reports'));
     }
 
     public function finishDoneShow($id)
     {
+        $this->ensureTechnicianRouteAccess();
+
         $report = Report::with([
             'detailFotoReports:image_path,report_id',
+            'detailFotoReportSelesais:image_path,report_id',
             'detailStatusReports' => function ($q) {
-                $q->select('id', 'report_id', 'status', 'keterangan')
+                $q->select('id', 'report_id', 'created_by', 'status', 'keterangan')
                     ->orderBy('created_at', 'desc')
                     ->limit(1);
             },
-            'user:id,name'
+            'user:id,name',
+            'assignee:id,name,role',
         ])
             ->where('id', $id)
-            ->first();
+            ->firstOrFail();
+
+        $this->authorizeReportAccess($report);
+
+        if (auth()->user()?->role === config('callmega.roles.technician')) {
+            return view('teknisi.reports.finish.done.display', compact('report'));
+        }
+
         return view('admin.reports.finish.done.display', compact('report'));
     }
 
     public function finishDeclinedIndex()
     {
+        $this->ensureTechnicianRouteAccess();
+
+        $isTechnician = auth()->user()?->role === config('callmega.roles.technician');
         $reports = Report::with([
             'detailFotoReports:image_path,report_id',
             'detailStatusReports' => function ($q) {
@@ -189,14 +197,23 @@ class AdminReportController extends Controller
               LIMIT 1
           )');
             })
+            ->when($isTechnician, function ($q) {
+                $q->where('assigned_to', auth()->id());
+            })
             ->orderBy('created_at', 'desc')
             ->get();
+
+        if ($isTechnician) {
+            return view('teknisi.reports.finish.declined.index', compact('reports'));
+        }
 
         return view('admin.reports.finish.declined.index', compact('reports'));
     }
 
     public function finishDeclinedShow($id)
     {
+        $this->ensureTechnicianRouteAccess();
+
         $report = Report::with([
             'detailFotoReports:image_path,report_id',
             'detailStatusReports' => function ($q) {
@@ -207,20 +224,34 @@ class AdminReportController extends Controller
             'user:id,name'
         ])
             ->where('id', $id)
-            ->first();
+            ->firstOrFail();
+
+        $this->authorizeReportAccess($report);
+
+        if (auth()->user()?->role === config('callmega.roles.technician')) {
+            return view('teknisi.reports.finish.declined.display', compact('report'));
+        }
+
         return view('admin.reports.finish.declined.display', compact('report'));
     }
 
     public function processedIndex()
     {
+        $this->ensureTechnicianRouteAccess();
+
+        $isTechnician = auth()->user()?->role === config('callmega.roles.technician');
         $reports = Report::with([
             'detailFotoReports:image_path,report_id',
             'detailStatusReports' => function ($q) {
-                $q->select('id', 'report_id', 'status', 'keterangan', 'created_at')
+                $q->select('id', 'report_id', 'created_by', 'status', 'keterangan', 'created_at')
                     ->orderBy('created_at', 'desc');
             },
-            'user:id,name'
+            'user:id,name',
+            'assignee:id,name,role',
         ])
+            ->when($isTechnician, function ($q) {
+                $q->where('assigned_to', auth()->id());
+            })
             ->whereHas('detailStatusReports', function ($q) {
                 $q->where('status', 'Diproses')
                     ->whereRaw('detail_status_reports.id = (
@@ -233,34 +264,53 @@ class AdminReportController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        if ($isTechnician) {
+            return view('teknisi.reports.processed.index', compact('reports'));
+        }
+
         return view('admin.reports.processed.index', compact('reports'));
     }
 
     public function processedShow($id)
     {
+        $this->ensureTechnicianRouteAccess();
+
         $report = Report::with([
             'detailFotoReports:image_path,report_id',
             'detailStatusReports' => function ($q) {
-                $q->select('id', 'report_id', 'status', 'keterangan')
+                $q->select('id', 'report_id', 'created_by', 'status', 'keterangan', 'created_at')
                     ->orderBy('created_at', 'desc')
                     ->limit(1);
             },
-            'user:id,name'
+            'user:id,name',
+            'assignee:id,name,role',
         ])
             ->where('id', $id)
-            ->first();
+            ->firstOrFail();
+
+        $this->authorizeReportAccess($report);
+
+        if (auth()->user()?->role === config('callmega.roles.technician')) {
+            return view('teknisi.reports.processed.display', compact('report'));
+        }
+
         return view('admin.reports.processed.display', compact('report'));
     }
 
     public function processedUpdateStatus(Request $request, $id)
     {
+        $this->ensureTechnicianRouteAccess();
+
         $request->validate(
             [
-                'status' => 'required|in:Menunggu,Diproses,Selesai,Ditolak',
-                'buktiFoto' => 'required|array',
+                'status' => 'required|in:Diproses,Selesai',
+                'keterangan' => 'required|string|max:1000',
+                'buktiFoto' => 'required_if:status,Selesai|array',
                 'buktiFoto.*' => 'image|mimes:jpeg,png,jpg,gif|max:5012', //maks 5 mb
             ],
             [
+                'keterangan.required' => 'Keterangan status harus diisi.',
+                'buktiFoto.required_if' => 'Bukti foto wajib diunggah saat status diselesaikan.',
                 'buktiFoto.*.image' => 'Bukti foto harus berupa gambar.',
                 'buktiFoto.*.max' => 'Bukti foto tidak boleh lebih dari 10MB.',
             ]
@@ -269,10 +319,12 @@ class AdminReportController extends Controller
         DB::beginTransaction();
         try {
             $report = Report::findOrFail($id);
+            $this->authorizeReportAccess($report);
 
             $report->detailStatusReports()->create([
+                'created_by' => auth()->id(),
                 'status' => $request->status,
-                'keterangan' => 'Laporan telah selesai ditangani. Terima kasih atas laporan Anda.',
+                'keterangan' => $request->keterangan,
             ]);
 
             // Simpan foto bukti jika statusnya Selesai
@@ -292,7 +344,11 @@ class AdminReportController extends Controller
 
             DB::commit();
             Log::info('Report status updated successfully:', ['report_id' => $report->id, 'new_status' => $request->status]);
-            return redirect()->route('admin.reports.processed.index')->with('success', 'Status laporan berhasil diperbarui.');
+            $redirectRoute = auth()->user()?->role === config('callmega.roles.technician')
+                ? 'teknisi.reports.processed.index'
+                : 'admin.reports.processed.index';
+
+            return redirect()->route($redirectRoute)->with('success', 'Status laporan berhasil diperbarui.');
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Error updating report status:', [
@@ -393,6 +449,8 @@ class AdminReportController extends Controller
     //Waiting Reports
     public function waitingIndex()
     {
+        abort_if(auth()->user()?->role === config('callmega.roles.technician'), 403);
+
         $reports = Report::with([
             'detailFotoReports:image_path,report_id',
             'detailStatusReports' => function ($q) {
@@ -418,6 +476,8 @@ class AdminReportController extends Controller
 
     public function waitingShow($id)
     {
+        abort_if(auth()->user()?->role === config('callmega.roles.technician'), 403);
+
         $report = Report::with([
             'detailFotoReports:image_path,report_id',
             'detailStatusReports' => function ($q) {
@@ -428,18 +488,46 @@ class AdminReportController extends Controller
             'user:id,name'
         ])
             ->where('id', $id)
-            ->first();
-        return view('admin.reports.waiting.display', compact('report'));
+            ->firstOrFail();
+
+        $technician = User::where('role', config('callmega.roles.technician'))->first();
+
+        return view('admin.reports.waiting.display', compact('report', 'technician'));
     }
 
     public function waitingUpdateStatus(Request $request, $id)
     {
+        abort_if(auth()->user()?->role === config('callmega.roles.technician'), 403);
+
         $request->validate([
             'status' => 'required|in:Menunggu,Diproses,Selesai,Ditolak',
-            'feedback' => 'required_if:status,Ditolak|string|max:255'
+            'assignee_type' => 'required_if:status,Diproses|in:ga,technician',
+            'keterangan' => 'required_if:status,Diproses|string|max:1000',
+            'feedback' => 'required_if:status,Ditolak|string|max:255',
+        ], [
+            'assignee_type.required_if' => 'Pilih tujuan penugasan laporan.',
+            'keterangan.required_if' => 'Keterangan verifikasi harus diisi.',
+            'feedback.required_if' => 'Alasan penolakan harus diisi.',
         ]);
 
         $report = Report::findOrFail($id);
+        $assignedTo = $report->assigned_to;
+
+        if ($request->status === 'Diproses') {
+            if ($request->assignee_type === 'technician') {
+                $technician = User::where('role', config('callmega.roles.technician'))->first();
+
+                if (!$technician) {
+                    return redirect()->back()->withInput()->with('error', 'Akun teknisi belum tersedia. Jalankan seeder teknisi terlebih dahulu.');
+                }
+
+                $assignedTo = $technician->id;
+            } else {
+                $assignedTo = auth()->id();
+            }
+
+            $report->update(['assigned_to' => $assignedTo]);
+        }
 
         // Mapping keterangan berdasarkan status
         $keteranganMap = [
@@ -450,6 +538,7 @@ class AdminReportController extends Controller
         ];
 
         $report->detailStatusReports()->create([
+            'created_by' => auth()->id(),
             'status'     => $request->status,
             'keterangan' => $request->keterangan ?? $keteranganMap[$request->status],
             'feedback'   => $request->feedback
@@ -458,6 +547,37 @@ class AdminReportController extends Controller
         return redirect()
             ->route('admin.reports.index')
             ->with('success', 'Status laporan berhasil diperbarui.');
+    }
+
+    private function latestStatusCount(string $status, ?int $assignedTo = null): int
+    {
+        return Report::when($assignedTo, function ($q) use ($assignedTo) {
+            $q->where('assigned_to', $assignedTo);
+        })
+            ->whereIn('id', function ($q) use ($status) {
+                $q->select('report_id')
+                    ->from('detail_status_reports')
+                    ->where('status', $status)
+                    ->whereIn('id', function ($sub) {
+                        $sub->selectRaw('MAX(id)')
+                            ->from('detail_status_reports')
+                            ->groupBy('report_id');
+                    });
+            })->count();
+    }
+
+    private function authorizeReportAccess(Report $report): void
+    {
+        if (auth()->user()?->role === config('callmega.roles.technician') && $report->assigned_to !== auth()->id()) {
+            abort(403);
+        }
+    }
+
+    private function ensureTechnicianRouteAccess(): void
+    {
+        if (request()->routeIs('teknisi.*') && auth()->user()?->role !== config('callmega.roles.technician')) {
+            abort(403);
+        }
     }
 
     /**

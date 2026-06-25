@@ -11,8 +11,12 @@ class Report extends Model
     protected $table = 'reports';
     protected $fillable = [
         'user_id',
+        'assigned_to',
         'tanggal',
         'lokasi',
+        'lokasi_area',
+        'lokasi_detail',
+        'lokasi_catatan',
         'kategori',
         'permasalahan',
     ];
@@ -20,6 +24,11 @@ class Report extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    public function assignee()
+    {
+        return $this->belongsTo(User::class, 'assigned_to', 'id');
     }
 
     public function detailFotoReports()
@@ -36,5 +45,10 @@ class Report extends Model
     public function detailStatusReports()
     {
         return $this->hasMany(DetailStatusReport::class, 'report_id', 'id');
+    }
+
+    public function detailFotoReportSelesais()
+    {
+        return $this->hasMany(DetailFotoReportSelesai::class, 'report_id', 'id');
     }
 }

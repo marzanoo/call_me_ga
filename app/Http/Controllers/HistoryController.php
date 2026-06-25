@@ -32,7 +32,13 @@ class HistoryController extends Controller
      */
     public function show($id)
     {
-        $report = Report::with('detailFotoReports:image_path,report_id')->where('id', $id)->first();
+        $report = Report::with([
+            'detailFotoReports:image_path,report_id',
+            'detailFotoReportSelesais:image_path,report_id',
+        ])
+            ->where('id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
 
         return view('karyawan.history.detail.index', compact('report'));
     }

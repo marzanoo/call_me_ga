@@ -14,51 +14,19 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         if ($user->role === 1) {
-            $laporanMenungguCount = Report::whereIn('id', function ($q) {
-                $q->select('report_id')
-                    ->from('detail_status_reports')
-                    ->where('status', 'Menunggu')
-                    ->whereIn('id', function ($sub) {
-                        $sub->selectRaw('MAX(id)')
-                            ->from('detail_status_reports')
-                            ->groupBy('report_id');
-                    });
-            })->count();
-
-            $laporanDiprosesCount = Report::whereIn('id', function ($q) {
-                $q->select('report_id')
-                    ->from('detail_status_reports')
-                    ->where('status', 'Diproses')
-                    ->whereIn('id', function ($sub) {
-                        $sub->selectRaw('MAX(id)')
-                            ->from('detail_status_reports')
-                            ->groupBy('report_id');
-                    });
-            })->count();
-
-            $laporanSelesaiCount = Report::whereIn('id', function ($q) {
-                $q->select('report_id')
-                    ->from('detail_status_reports')
-                    ->where('status', 'Selesai')
-                    ->whereIn('id', function ($sub) {
-                        $sub->selectRaw('MAX(id)')
-                            ->from('detail_status_reports')
-                            ->groupBy('report_id');
-                    });
-            })->count();
-
-            $laporanDitolakCount = Report::whereIn('id', function ($q) {
-                $q->select('report_id')
-                    ->from('detail_status_reports')
-                    ->where('status', 'Ditolak')
-                    ->whereIn('id', function ($sub) {
-                        $sub->selectRaw('MAX(id)')
-                            ->from('detail_status_reports')
-                            ->groupBy('report_id');
-                    });
-            })->count();
+            $laporanMenungguCount = $this->latestStatusCount('Menunggu');
+            $laporanDiprosesCount = $this->latestStatusCount('Diproses');
+            $laporanSelesaiCount = $this->latestStatusCount('Selesai');
+            $laporanDitolakCount = $this->latestStatusCount('Ditolak');
 
             return view('admin.index', compact('user', 'laporanMenungguCount', 'laporanDiprosesCount', 'laporanSelesaiCount', 'laporanDitolakCount'));
+        } elseif ($user->role === 2) {
+            $laporanMenungguCount = 0;
+            $laporanDiprosesCount = $this->latestStatusCount('Diproses', $user->id);
+            $laporanSelesaiCount = $this->latestStatusCount('Selesai', $user->id);
+            $laporanDitolakCount = $this->latestStatusCount('Ditolak', $user->id);
+
+            return view('teknisi.index', compact('user', 'laporanMenungguCount', 'laporanDiprosesCount', 'laporanSelesaiCount', 'laporanDitolakCount'));
         } elseif ($user->role === 3) {
             $lastReportStatus = Report::where('user_id', $user->id)
                 ->orderBy('created_at', 'desc')
@@ -69,24 +37,70 @@ class DashboardController extends Controller
                 ])
                 ->first();
             // dd($lastReportStatus);
-            $laporanDiprosesCount = Report::where('user_id', $user->id)
-                ->whereHas('detailStatusReports', function ($query) {
-                    $query->where('status', '!=', 'Selesai')->where('status', '!=', 'Ditolak');
-                })
-                ->count();
-            $laporanDitolakCount = Report::where('user_id', $user->id)
-                ->whereHas('detailStatusReports', function ($query) {
-                    $query->where('status', 'Ditolak');
-                })
-                ->count();
-            $laporanSelesaiCount = Report::where('user_id', $user->id)
-                ->whereHas('detailStatusReports', function ($query) {
-                    $query->where('status', 'Selesai');
-                })
-                ->count();
+            $laporanDiprosesCount = $this->latestStatusCount('Menunggu', null, $user->id) + $this->latestStatusCount('Diproses', null, $user->id);
+            $laporanDitolakCount = $this->latestStatusCount('Ditolak', null, $user->id);
+            $laporanSelesaiCount = $this->latestStatusCount('Selesai', null, $user->id);
             return view('karyawan.index', compact('user', 'lastReportStatus', 'laporanDiprosesCount', 'laporanDitolakCount', 'laporanSelesaiCount'));
         }
         return redirect()->route('login.show')->with('error', 'Unauthorized access');
+    }
+
+    public function publicDashboard()
+    {
+        $laporanMenungguCount = $this->latestStatusCount('Menunggu');
+        $laporanDiprosesCount = $this->latestStatusCount('Diproses');
+        $laporanSelesaiCount = $this->latestStatusCount('Selesai');
+        $laporanDitolakCount = $this->latestStatusCount('Ditolak');
+        $totalLaporanCount = Report::count();
+
+        $latestReports = Report::with([
+            'user:id,name',
+            'assignee:id,name,role',
+            'detailStatusReports' => function ($q) {
+                $q->select('id', 'report_id', 'status', 'keterangan', 'created_at')
+                    ->orderBy('created_at', 'desc');
+            },
+        ])
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        $locationSummaries = Report::query()
+            ->selectRaw('COALESCE(lokasi_area, lokasi) as label, COUNT(*) as total')
+            ->groupByRaw('COALESCE(lokasi_area, lokasi)')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get();
+
+        return view('public-dashboard', compact(
+            'laporanMenungguCount',
+            'laporanDiprosesCount',
+            'laporanSelesaiCount',
+            'laporanDitolakCount',
+            'totalLaporanCount',
+            'latestReports',
+            'locationSummaries'
+        ));
+    }
+
+    private function latestStatusCount(string $status, ?int $assignedTo = null, ?int $userId = null): int
+    {
+        return Report::when($assignedTo, function ($q) use ($assignedTo) {
+            $q->where('assigned_to', $assignedTo);
+        })
+            ->when($userId, function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+        })
+            ->whereIn('id', function ($q) use ($status) {
+                $q->select('report_id')
+                    ->from('detail_status_reports')
+                    ->where('status', $status)
+                    ->whereIn('id', function ($sub) {
+                        $sub->selectRaw('MAX(id)')
+                            ->from('detail_status_reports')
+                            ->groupBy('report_id');
+                    });
+            })->count();
     }
 
     /**

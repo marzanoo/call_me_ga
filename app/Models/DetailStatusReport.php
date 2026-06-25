@@ -11,6 +11,7 @@ class DetailStatusReport extends Model
     protected $table = 'detail_status_reports';
     protected $fillable = [
         'report_id',
+        'created_by',
         'status',
         'keterangan',
         'feedback',
@@ -19,5 +20,10 @@ class DetailStatusReport extends Model
     public function report()
     {
         return $this->belongsTo(Report::class, 'report_id', 'id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by', 'id');
     }
 }

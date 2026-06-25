@@ -10,11 +10,11 @@
         </a>
 
         {{-- Laporan Masuk --}}
-        <a href="{{ route('admin.reports.index') }}"
+        <a href="{{ route('admin.reports.index', ['status' => auth()->user()?->role === 2 ? 'diproses' : 'menunggu']) }}"
            class="flex flex-col items-center text-gray-600
            @if (Route::is('admin.reports.index')) text-red-800 @endif">
             <i class="fa-solid fa-clipboard-list text-xl mb-1"></i>
-            <span class="text-xs font-medium">Laporan Masuk</span>
+            <span class="text-xs font-medium">{{ auth()->user()?->role === 2 ? 'Tugas Diproses' : 'Laporan Masuk' }}</span>
         </a>
 
         {{-- Laporan Selesai --}}

@@ -25,7 +25,7 @@
         </div>
         
         {{-- Report Title and Description --}}
-        <h6 class="font-semibold text-gray-800 mb-2">{{ $report->lok ?? 'Gedung WMS Lantai 5, CMD' }}</h6>
+        <h6 class="font-semibold text-gray-800 mb-2">{{ $report->lokasi ?? 'Gedung WMS Lantai 5, CMD' }}</h6>
         <p class="text-gray-600 text-sm mb-4">
             {{ $report->permasalahan ?? 'Lampu mengalami kerusakan mati total nih jadi gelap kaga bisa gawe jadinya' }}
         </p>
@@ -69,6 +69,9 @@
                                 <span class="text-xs text-gray-500">{{ $status->created_at->format('d F Y - H:i') }}</span>
                             </div>
                             <p class="text-sm text-gray-600">{{ $status->keterangan ?? 'Sedang dalam proses' }}</p>
+                            @if($status->creator)
+                                <p class="text-xs text-gray-400 mt-1">Diupdate oleh {{ ucwords(strtolower($status->creator->name)) }}</p>
+                            @endif
                         </div>
                     </div>
                 @endforeach

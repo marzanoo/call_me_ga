@@ -38,6 +38,22 @@
         <p class="text-gray-600 text-sm mb-4">
             {{ $report->permasalahan ?? 'Lampu mengalami kerusakan mati total nih jadi gelap kaga bisa gawe jadinya' }}
         </p>
+
+        @if($report->detailFotoReportSelesais->count())
+            <div class="mb-4">
+                <h6 class="font-semibold text-gray-800 mb-2">Foto Bukti Penyelesaian</h6>
+                <div class="grid grid-cols-3 gap-2">
+                    @foreach($report->detailFotoReportSelesais as $foto)
+                        <img
+                            src="{{ asset('storage/' . $foto->image_path) }}"
+                            alt="Foto Bukti Penyelesaian"
+                            class="w-full h-28 object-cover rounded-lg cursor-pointer"
+                            onclick="openImageModal('{{ asset('storage/' . $foto->image_path) }}')"
+                        >
+                    @endforeach
+                </div>
+            </div>
+        @endif
         
         <hr class="border-gray-300 mb-4">
         
@@ -82,6 +98,9 @@
                                 <span class="text-xs text-gray-500">{{ $status->created_at->format('d F Y - H:i') }}</span>
                             </div>
                             <p class="text-sm text-gray-600">{{ $status->keterangan ?? 'Sedang dalam proses' }}</p>
+                            @if($status->creator)
+                                <p class="text-xs text-gray-400 mt-1">Diupdate oleh {{ ucwords(strtolower($status->creator->name)) }}</p>
+                            @endif
                         </div>
                     </div>
                 @endforeach

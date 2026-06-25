@@ -35,6 +35,9 @@
         @endif
         {{-- Report Title and Description --}}
         <h6 class="font-semibold text-gray-800 mb-2">{{ $report->lokasi ?? 'Gedung WMS Lantai 5, CMD' }}</h6>
+        @if($report->lokasi_catatan)
+            <p class="text-gray-500 text-sm mb-3">Detail lokasi: {{ $report->lokasi_catatan }}</p>
+        @endif
         <p class="text-gray-600 text-sm mb-4">
             {{ $report->permasalahan ?? 'Lampu mengalami kerusakan mati total nih jadi gelap kaga bisa gawe jadinya' }}
         </p>
@@ -82,6 +85,9 @@
                                 <span class="text-xs text-gray-500">{{ $status->created_at->format('d F Y - H:i') }}</span>
                             </div>
                             <p class="text-sm text-gray-600">{{ $status->keterangan ?? 'Sedang dalam proses' }}</p>
+                            @if($status->creator)
+                                <p class="text-xs text-gray-400 mt-1">Diupdate oleh {{ ucwords(strtolower($status->creator->name)) }}</p>
+                            @endif
                         </div>
                     </div>
                 @endforeach
@@ -89,6 +95,30 @@
         </div>
         <form method="POST" action="{{ route('admin.reports.waiting.update-status', $report->id) }}">
             @csrf
+
+            <div class="mt-4">
+                <label for="keterangan" class="block text-sm font-medium text-gray-700 mb-1">
+                    Keterangan Verifikasi
+                </label>
+                <textarea name="keterangan" id="keterangan" rows="4" class="w-full border rounded-md p-2 text-sm" placeholder="Masukkan catatan saat laporan mulai diproses...">{{ old('keterangan') }}</textarea>
+                <p class="text-xs text-gray-500 mt-1">Catatan ini akan tampil sebagai riwayat pada status Diproses.</p>
+            </div>
+
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Assign Penanganan
+                </label>
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <label class="border rounded-md p-3 cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="assignee_type" value="ga" class="mr-2" @checked(old('assignee_type', 'ga') === 'ga')>
+                        GA Admin
+                    </label>
+                    <label class="border rounded-md p-3 cursor-pointer hover:bg-gray-50 {{ $technician ? '' : 'opacity-60' }}">
+                        <input type="radio" name="assignee_type" value="technician" class="mr-2" @disabled(!$technician) @checked(old('assignee_type') === 'technician')>
+                        Teknisi{{ $technician ? ' - ' . ucwords(strtolower($technician->name)) : ' belum tersedia' }}
+                    </label>
+                </div>
+            </div>
 
             <div class="mt-4 hidden" id="feedbackContainer">
                 <label for="feedback" class="block text-sm font-medium text-gray-700 mb-1">
