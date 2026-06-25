@@ -10,6 +10,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
@@ -499,50 +500,93 @@ class AdminReportController extends Controller
     {
         abort_if(auth()->user()?->role === config('callmega.roles.technician'), 403);
 
-        $request->validate([
+        Log::info('Waiting report status update requested:', [
+            'report_id' => $id,
+            'user_id' => auth()->id(),
+            'payload' => $request->except('_token'),
+        ]);
+
+        $validator = Validator::make($request->all(), [
             'status' => 'required|in:Menunggu,Diproses,Selesai,Ditolak',
             'assignee_type' => 'required_if:status,Diproses|in:ga,technician',
-            'keterangan' => 'required_if:status,Diproses|string|max:1000',
-            'feedback' => 'required_if:status,Ditolak|string|max:255',
+            'keterangan' => 'nullable|string|max:1000',
+            'feedback' => 'nullable|required_if:status,Ditolak|string|max:255',
         ], [
             'assignee_type.required_if' => 'Pilih tujuan penugasan laporan.',
-            'keterangan.required_if' => 'Keterangan verifikasi harus diisi.',
             'feedback.required_if' => 'Alasan penolakan harus diisi.',
         ]);
 
-        $report = Report::findOrFail($id);
-        $assignedTo = $report->assigned_to;
+        if ($validator->fails()) {
+            Log::warning('Waiting report status update validation failed:', [
+                'report_id' => $id,
+                'user_id' => auth()->id(),
+                'errors' => $validator->errors()->toArray(),
+            ]);
 
-        if ($request->status === 'Diproses') {
-            if ($request->assignee_type === 'technician') {
-                $technician = User::where('role', config('callmega.roles.technician'))->first();
-
-                if (!$technician) {
-                    return redirect()->back()->withInput()->with('error', 'Akun teknisi belum tersedia. Jalankan seeder teknisi terlebih dahulu.');
-                }
-
-                $assignedTo = $technician->id;
-            } else {
-                $assignedTo = auth()->id();
-            }
-
-            $report->update(['assigned_to' => $assignedTo]);
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        // Mapping keterangan berdasarkan status
-        $keteranganMap = [
-            'Menunggu' => 'Laporan telah diterima dan menunggu proses verifikasi.',
-            'Diproses' => 'Laporan telah diverifikasi dan sedang dilakukan tindakan.',
-            'Selesai'  => 'Laporan telah selesai ditangani.',
-            'Ditolak'  => 'Laporan ditolak dan dibatalkan.',
-        ];
+        DB::beginTransaction();
+        try {
+            $report = Report::findOrFail($id);
+            $assignedTo = $report->assigned_to;
 
-        $report->detailStatusReports()->create([
-            'created_by' => auth()->id(),
-            'status'     => $request->status,
-            'keterangan' => $request->keterangan ?? $keteranganMap[$request->status],
-            'feedback'   => $request->feedback
-        ]);
+            if ($request->status === 'Diproses') {
+                if ($request->assignee_type === 'technician') {
+                    $technician = User::where('role', config('callmega.roles.technician'))->first();
+
+                    if (!$technician) {
+                        Log::warning('Waiting report status update failed because technician account is missing:', [
+                            'report_id' => $id,
+                            'user_id' => auth()->id(),
+                        ]);
+
+                        return redirect()->back()->withInput()->with('error', 'Akun teknisi belum tersedia. Jalankan seeder teknisi terlebih dahulu.');
+                    }
+
+                    $assignedTo = $technician->id;
+                } else {
+                    $assignedTo = auth()->id();
+                }
+
+                $report->update(['assigned_to' => $assignedTo]);
+            }
+
+            // Mapping keterangan berdasarkan status
+            $keteranganMap = [
+                'Menunggu' => 'Laporan telah diterima dan menunggu proses verifikasi.',
+                'Diproses' => 'Laporan telah diverifikasi dan sedang dilakukan tindakan.',
+                'Selesai'  => 'Laporan telah selesai ditangani.',
+                'Ditolak'  => 'Laporan ditolak dan dibatalkan.',
+            ];
+
+            $report->detailStatusReports()->create([
+                'created_by' => auth()->id(),
+                'status'     => $request->status,
+                'keterangan' => $request->filled('keterangan') ? $request->keterangan : $keteranganMap[$request->status],
+                'feedback'   => $request->feedback
+            ]);
+
+            DB::commit();
+
+            Log::info('Waiting report status update succeeded:', [
+                'report_id' => $report->id,
+                'new_status' => $request->status,
+                'assigned_to' => $assignedTo,
+                'user_id' => auth()->id(),
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            Log::error('Waiting report status update failed:', [
+                'report_id' => $id,
+                'user_id' => auth()->id(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan saat verifikasi laporan.');
+        }
 
         return redirect()
             ->route('admin.reports.index')

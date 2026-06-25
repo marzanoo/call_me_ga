@@ -50,7 +50,7 @@ Route::middleware('superapp.auth')->group(function () {
                 ->only(['index', 'store', 'update', 'destroy'])
                 ->names('admin.master.locations');
             Route::resource('users', MasterUserController::class)
-                ->only(['index', 'store', 'update', 'destroy'])
+                ->only(['index', 'store', 'edit', 'update', 'destroy'])
                 ->names('admin.master.users');
         });
 

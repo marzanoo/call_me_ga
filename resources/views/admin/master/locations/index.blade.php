@@ -9,7 +9,7 @@
             <h5 class="font-bold text-gray-800 text-2xl">Master Lokasi</h5>
             <p class="text-sm text-gray-500 mt-1">Kelola pilihan lokasi daerah dan gedung/lantai untuk form pelaporan.</p>
         </div>
-        <a href="{{ route('dashboard') }}" class="text-sm font-semibold text-[#B3282D] hover:underline">Kembali</a>
+        <a href="{{ route('admin.master.index') }}" class="text-sm font-semibold text-[#B3282D] hover:underline">Kembali</a>
     </div>
 
     <div class="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-5">

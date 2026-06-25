@@ -9,18 +9,39 @@ use Illuminate\Validation\Rule;
 
 class MasterUserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $this->authorizeAdmin();
 
+        $filters = $request->only(['search', 'role', 'email_status']);
+
         $users = User::withCount(['reports', 'assignedReports'])
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('nik', 'like', "%{$search}%")
+                        ->orWhere('name', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->when($filters['role'] ?? null, fn ($query, $role) => $query->where('role', $role))
+            ->when($filters['email_status'] ?? null, function ($query, $status) {
+                if ($status === 'verified') {
+                    $query->whereNotNull('email_verified_at');
+                }
+
+                if ($status === 'unverified') {
+                    $query->whereNull('email_verified_at');
+                }
+            })
             ->orderBy('role')
             ->orderBy('name')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         $roleOptions = $this->roleOptions();
 
-        return view('admin.master.users.index', compact('users', 'roleOptions'));
+        return view('admin.master.users.index', compact('users', 'roleOptions', 'filters'));
     }
 
     public function store(Request $request)
@@ -34,6 +55,15 @@ class MasterUserController extends Controller
         User::create($data);
 
         return redirect()->route('admin.master.users.index')->with('success', 'Master user berhasil ditambahkan.');
+    }
+
+    public function edit(User $user)
+    {
+        $this->authorizeAdmin();
+
+        $roleOptions = $this->roleOptions();
+
+        return view('admin.master.users.edit', compact('user', 'roleOptions'));
     }
 
     public function update(Request $request, User $user)

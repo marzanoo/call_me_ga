@@ -53,6 +53,41 @@
         </form>
     </div>
 
+    <div class="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-5">
+        <h6 class="font-semibold text-gray-800 mb-3">Filter User</h6>
+        <form action="{{ route('admin.master.users.index') }}" method="GET" class="grid gap-3 md:grid-cols-4">
+            <div class="md:col-span-2">
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari</label>
+                <input type="text" id="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Nama, NIK, username, atau email" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+            </div>
+            <div>
+                <label for="filter_role" class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select id="filter_role" name="role" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    <option value="">Semua role</option>
+                    @foreach($roleOptions as $roleValue => $roleLabel)
+                        <option value="{{ $roleValue }}" @selected((string) ($filters['role'] ?? '') === (string) $roleValue)>{{ $roleLabel }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="email_status" class="block text-sm font-medium text-gray-700 mb-1">Status Email</label>
+                <select id="email_status" name="email_status" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    <option value="">Semua status</option>
+                    <option value="verified" @selected(($filters['email_status'] ?? '') === 'verified')>Verified</option>
+                    <option value="unverified" @selected(($filters['email_status'] ?? '') === 'unverified')>Belum verified</option>
+                </select>
+            </div>
+            <div class="md:col-span-4 flex justify-end gap-2">
+                <a href="{{ route('admin.master.users.index') }}" class="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold">
+                    Reset
+                </a>
+                <button type="submit" class="bg-[#B3282D] hover:bg-red-800 text-white px-4 py-2 rounded-lg font-semibold">
+                    Terapkan Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
     <div class="bg-white p-4 rounded-lg shadow-md border border-gray-100 overflow-x-auto">
         <table class="min-w-full table-auto">
             <thead>
@@ -70,41 +105,30 @@
                     <tr>
                         <td class="border px-4 py-3 text-sm align-top">{{ $loop->iteration + ($users->currentPage() - 1) * $users->perPage() }}</td>
                         <td class="border px-4 py-3 align-top min-w-[220px]">
-                            <form id="update-user-{{ $user->id }}" action="{{ route('admin.master.users.update', $user->id) }}" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <label class="block text-xs text-gray-500 mb-1">NIK</label>
-                                <input type="text" name="nik" value="{{ old('nik', $user->nik) }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2" required>
-                                <label class="block text-xs text-gray-500 mb-1">Nama</label>
-                                <input type="text" name="name" value="{{ old('name', $user->name) }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" required>
-                            </form>
+                            <p class="font-semibold text-gray-800">{{ $user->name }}</p>
+                            <p class="text-sm text-gray-500">NIK: {{ $user->nik }}</p>
                         </td>
                         <td class="border px-4 py-3 align-top min-w-[220px]">
-                            <label class="block text-xs text-gray-500 mb-1">Username</label>
-                            <input form="update-user-{{ $user->id }}" type="text" name="username" value="{{ old('username', $user->username) }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2" required>
-                            <label class="block text-xs text-gray-500 mb-1">Email</label>
-                            <input form="update-user-{{ $user->id }}" type="email" name="email" value="{{ old('email', $user->email) }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2" required>
-                            <label class="block text-xs text-gray-500 mb-1">Password Baru</label>
-                            <input form="update-user-{{ $user->id }}" type="password" name="password" placeholder="Kosongkan jika tidak diganti" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <p class="font-medium text-gray-800">{{ $user->username }}</p>
+                            <p class="text-sm text-gray-500">{{ $user->email }}</p>
                         </td>
                         <td class="border px-4 py-3 align-top">
-                            <select form="update-user-{{ $user->id }}" name="role" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" required>
-                                @foreach($roleOptions as $roleValue => $roleLabel)
-                                    <option value="{{ $roleValue }}" @selected((int) $user->role === (int) $roleValue)>{{ $roleLabel }}</option>
-                                @endforeach
-                            </select>
+                            <span class="inline-flex px-3 py-1 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
+                                {{ $roleOptions[$user->role] ?? 'Tidak diketahui' }}
+                            </span>
                         </td>
                         <td class="border px-4 py-3 align-top">
-                            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                                <input form="update-user-{{ $user->id }}" type="checkbox" name="email_verified" value="1" @checked($user->email_verified_at)>
-                                Verified
-                            </label>
+                            @if($user->email_verified_at)
+                                <span class="inline-flex px-3 py-1 rounded-full bg-green-100 text-sm font-semibold text-green-700">Verified</span>
+                            @else
+                                <span class="inline-flex px-3 py-1 rounded-full bg-yellow-100 text-sm font-semibold text-yellow-700">Belum verified</span>
+                            @endif
                         </td>
                         <td class="border px-4 py-3 align-top">
                             <div class="flex flex-wrap gap-2">
-                                <button form="update-user-{{ $user->id }}" type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm">
-                                    Simpan
-                                </button>
+                                <a href="{{ route('admin.master.users.edit', $user->id) }}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm">
+                                    Edit
+                                </a>
                                 <form action="{{ route('admin.master.users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Hapus user ini?')">
                                     @csrf
                                     @method('DELETE')

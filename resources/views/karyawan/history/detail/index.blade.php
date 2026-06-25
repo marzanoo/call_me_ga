@@ -36,46 +36,9 @@
         <div class="bg-gray-50 rounded-lg">
             <h6 class="font-semibold text-gray-800 mb-2">Status Laporan</h6>            
             
-            {{-- Status Timeline --}}
-            <div class="space-y-4">
-                @foreach($report->detailStatusReports()->orderBy('created_at', 'asc')->get() as $status)
-                    <div class="flex gap-3">
-                        {{-- Status Icon --}}
-                        <div class="flex flex-col items-center">
-                            @if($status->status == 'Menunggu')
-                                <div class="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center flex-shrink-0">
-                                </div>
-                            @elseif($status->status == 'Diproses')
-                                <div class="w-5 h-5 rounded-full bg-teal-400 flex items-center justify-center flex-shrink-0">
-                                </div>
-                            @elseif ($status->status == 'Ditolak')
-                                <div class="w-5 h-5 rounded-full bg-red-400 flex items-center justify-center flex-shrink-0">
-                                </div>
-                            @elseif ($status->status == 'Selesai')
-                                <div class="w-5 h-5 rounded-full bg-green-400 flex items-center justify-center flex-shrink-0">
-                                </div>
-                            @endif
-                            
-                            {{-- Connector Line --}}
-                            @if(!$loop->last)
-                                <div class="w-0.5 h-12 bg-gray-300 my-1"></div>
-                            @endif
-                        </div>
-                        
-                        {{-- Status Content --}}
-                        <div class="flex-1 pb-4">
-                            <div class="flex justify-between items-start mb-1">
-                                <span class="font-semibold text-gray-800">{{ $status->status }}</span>
-                                <span class="text-xs text-gray-500">{{ $status->created_at->format('d F Y - H:i') }}</span>
-                            </div>
-                            <p class="text-sm text-gray-600">{{ $status->keterangan ?? 'Sedang dalam proses' }}</p>
-                            @if($status->creator)
-                                <p class="text-xs text-gray-400 mt-1">Diupdate oleh {{ ucwords(strtolower($status->creator->name)) }}</p>
-                            @endif
-                        </div>
-                    </div>
-                @endforeach
-            </div>
+            @include('components.status-timeline', [
+                'statuses' => $report->detailStatusReports()->with('creator:id,name')->orderBy('created_at', 'asc')->get()
+            ])
         </div>
     </div>
 </div>
