@@ -5,13 +5,13 @@ namespace App\Http\Controllers\Report;
 use App\Http\Controllers\Controller;
 use App\Models\DetailFotoReport;
 use App\Models\DetailStatusReport;
+use App\Models\MasterLocation;
 use App\Models\Report;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Image;
 use Intervention\Image\ImageManager;
@@ -23,7 +23,12 @@ class ReportController extends Controller
      */
     public function index()
     {
-        $locations = config('callmega.locations');
+        $locations = MasterLocation::active()
+            ->orderBy('area')
+            ->orderBy('detail')
+            ->get()
+            ->groupBy('area')
+            ->map(fn ($items) => $items->pluck('detail')->values());
 
         return view('karyawan.reports.index', compact('locations'));
     }
@@ -37,18 +42,21 @@ class ReportController extends Controller
         Log::info('Request Data:', $request->all());
         Log::info('Files:', $request->allFiles());
 
-        $locations = config('callmega.locations');
-
         $request->validate(
             [
                 'user_id' => 'required|exists:users,id',
-                'lokasi_area' => ['required', 'string', 'max:255', Rule::in(array_keys($locations))],
+                'lokasi_area' => ['required', 'string', 'max:255'],
                 'lokasi_detail' => [
                     'required',
                     'string',
                     'max:255',
-                    function ($attribute, $value, $fail) use ($request, $locations) {
-                        if (!in_array($value, $locations[$request->lokasi_area] ?? [], true)) {
+                    function ($attribute, $value, $fail) use ($request) {
+                        $isValidLocation = MasterLocation::active()
+                            ->where('area', $request->lokasi_area)
+                            ->where('detail', $value)
+                            ->exists();
+
+                        if (!$isValidLocation) {
                             $fail('Gedung atau lantai tidak sesuai dengan lokasi daerah.');
                         }
                     },

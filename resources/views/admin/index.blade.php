@@ -56,5 +56,12 @@
             </div>
         </div>
     </div>
+    <div class="bg-white p-4 rounded-lg shadow-md text-center mb-4">
+        <h3 class="flex text-xl font-bold text-gray-800 mb-1">Master Data</h3>
+        <p class="flex text-sm text-gray-500 mb-6">Kelola data referensi sistem</p>
+        <a href="{{ route('admin.master.locations.index') }}" class="block w-full bg-[#B3282D] text-white py-2 px-4 rounded-lg shadow-md">
+            Master Lokasi
+        </a>
+    </div>
 </div>
 @endsection

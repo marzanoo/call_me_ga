@@ -24,5 +24,15 @@
             <i class="fa-solid fa-clipboard-check text-xl mb-1"></i>
             <span class="text-xs font-medium">Laporan Selesai</span>
         </a>
+
+        {{-- Master --}}
+        @if (auth()->user()?->role === config('callmega.roles.admin'))
+            <a href="{{ route('admin.master.locations.index') }}"
+               class="flex flex-col items-center text-gray-600
+               @if (Route::is('admin.master.*')) text-red-800 @endif">
+                <i class="fa-solid fa-sliders text-xl mb-1"></i>
+                <span class="text-xs font-medium">Master</span>
+            </a>
+        @endif
     </div>
 </nav>

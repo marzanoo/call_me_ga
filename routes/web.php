@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Admin\MasterLocationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Report\AdminReportController;
@@ -41,6 +42,12 @@ Route::middleware('superapp.auth')->group(function () {
         Route::get('/{id}', 'show')->name('history.show');
     });
     Route::prefix('admin')->group(function () {
+        Route::prefix('master')->group(function () {
+            Route::resource('locations', MasterLocationController::class)
+                ->only(['index', 'store', 'update', 'destroy'])
+                ->names('admin.master.locations');
+        });
+
         Route::prefix('reports')->controller(AdminReportController::class)->group(function () {
             Route::get('/', 'index')->name('admin.reports.index');
             Route::get('/finish', 'finishIndex')->name('admin.reports.finish.index');
